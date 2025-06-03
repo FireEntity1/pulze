@@ -7,8 +7,8 @@
 	onMount(() => {
 		window.onYouTubeIframeAPIReady = function () {
 			player = new YT.Player('player', {
-				height: '360',
-				width: '640',
+				height: '0',
+				width: '0',
 				playerVars: {
 					listType: 'playlist',
 					list: '',
@@ -20,6 +20,7 @@
 				},
 				events: {
 					onReady: (event) => event.target.playVideo(),
+					'onStateChange': onPlayerStateChange,
 				}
 			});
 		};
@@ -27,11 +28,17 @@
 		const script = document.createElement('script');
 		script.src = "https://www.youtube.com/iframe_api";
 		document.body.appendChild(script);
+
 	});
+
+	function onPlayerStateChange(event) {
+		setTimeout(updateCover, 400);
+	}
 
 	function next() {
 		if (player && player.nextVideo) {
 			player.nextVideo();
+			setTimeout(updateCover, 400);
 		} else {
 			console.error("player brokey");
 		}
@@ -40,17 +47,26 @@
     function previous() {
 		if (player && player.nextVideo) {
 			player.previousVideo();
+			setTimeout(updateCover, 400);
 		} else {
 			console.error("player brokey");
 		}
 	}
 
+	function updateCover() {
+		let cover = "https://img.youtube.com/vi/" + player.getVideoData()['video_id'] + "/0.jpg";
+		document.getElementById("cover").setAttribute('src', cover);
+	}
+
     function play() {
+
 		if (player && player.nextVideo) {
             if (player.getPlayerState() == 1) {
                 player.pauseVideo();
+				updateCover();
             } else if (player.getPlayerState() == 2 || player.getPlayerState() == -1) {
                 player.playVideo();
+				updateCover();
             }
 		} else {
 			console.error("player brokey");
@@ -93,6 +109,7 @@
 		<input id="link">
 	</form>
     <div id="player" class="justify-center flex"></div>
+	<img id="cover" alt="cover" height="200px" width="400px">
     <div class="m-4">
         <button on:click={previous} class="font text-2xl bg-slate-900 p-7 rounded-3xl">Previous</button>
         <button on:click={next} class="font text-2xl bg-slate-900 p-7 rounded-3xl">Next</button>
