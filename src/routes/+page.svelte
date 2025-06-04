@@ -129,6 +129,13 @@
 			Math.floor(current / 60) + ':' + ('0' + Math.round(current % 60)).toString().slice(-2);
 	}
 
+	function pip() {
+		const iframe = document.querySelector('iframe');
+
+		iframe.requestPictureInPicture?.().catch((err) => {
+			console.log('no pip :(', err);
+		});
+	}
 	// https://www.youtube.com/watch?v=lc4nTM6M9KY&list=PLoogdHvYrJhlwTqkvGzds6BpT65nCBD28&index=1
 </script>
 
