@@ -8,12 +8,14 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"format": "prettier --write .",
-		"lint": "prettier --check ."
+		"lint": "prettier --check .",
+		"tauri": "tauri"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-vercel": "^5.5.0",
 		"@sveltejs/kit": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",
+		"@tauri-apps/cli": "^2.5.0",
 		"autoprefixer": "^10.4.20",
 		"prettier": "^3.3.2",
 		"prettier-plugin-svelte": "^3.2.6",
