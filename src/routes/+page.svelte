@@ -105,8 +105,20 @@
 	}
 
 	function updateSeek() {
-		document.getElementById("seek").value = player.getCurrentTime();
+		let current = player.getCurrentTime()
+		document.getElementById("seek").value = Math.floor(current);
+		let currentSec = "0" + Math.floor(current%60);
+		document.getElementById("elapsed").innerHTML = Math.floor(current/60) + ":" + ("0" + Math.round(current%60)).toString().slice(-2);
+		let duration = player.getDuration();
+		document.getElementById("total").innerHTML = Math.floor(duration/60) + ":" + Math.floor(duration%60); 
 	}
+
+	function moveSeeker() {
+		let current = document.getElementById("seek").value;
+		let currentSec = "0" + Math.floor(current%60);
+		document.getElementById("elapsed").innerHTML = Math.floor(current/60) + ":" + ("0" + Math.round(current%60)).toString().slice(-2);
+	}
+
 // https://www.youtube.com/watch?v=lc4nTM6M9KY&list=PLoogdHvYrJhlwTqkvGzds6BpT65nCBD28&index=1
 </script> 
 
@@ -117,7 +129,7 @@
 	rel="stylesheet"
 />
 
-<div class="fixed inset-0 w-screen h-screen z-[-1] bg text-center items-center flex flex-col">
+<div class="fixed inset-0 w-screen h-screen z-[-1] bg items-center flex flex-col font">
     <div class="m-2">
         <h1 class="font text-6xl justify-center" id="title">pulze</h1>
     </div>
@@ -132,7 +144,8 @@
         <button on:click={next} class="font text-2xl bg-slate-900 p-7 rounded-3xl">Next</button>
         <button on:click={play} class="font text-2xl bg-slate-900 p-7 rounded-3xl">||</button>
 		<input type="range" id="volume" min="0" max="100" on:change={() => changeVolume(document.getElementById("volume").value)}>
-		<input type="range" id="seek" min="0" max="1" on:change={() => seek(document.getElementById("seek").value)}>
+		<p class="text-center m-5"> <label id="elapsed">0:00</label> <input class="w-96" type="range" id="seek" min="0" max="1" on:change={() => seek(document.getElementById("seek").value)}
+			on:input={() => moveSeeker(document.getElementById("seek").value)}> <label id="total">0:00</label> </p>
     </div>
 
 </div>
