@@ -68,12 +68,24 @@ fn get_dir() -> Vec<String> {
     file_list
 }
 
+#[command]
+fn rename_file(file: String, new_file: String) -> Result<(), String> {
+    let folder = dirs::document_dir().unwrap().join("pulze");
+    println!("Renaming file in folder: {:?}", folder);
+
+    let old_path = folder.join(file);
+    let new_path = folder.join(new_file);
+
+    fs::rename(&old_path, &new_path).map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             download_video,
             read_file_base64,
-            get_dir
+            get_dir,
+            rename_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
