@@ -10,6 +10,8 @@
   let message = "";
   let audioSrc = "";
 
+  let volume = 0.5;
+
   let playing = 0;
 
   let audioSrcs = {};
@@ -61,8 +63,8 @@
   }
 </script>
 
-<main>
-  <h1>YouTube Downloader Test</h1>
+<main class="text-center align-middle">
+  <h1>PULZE</h1>
   <input bind:value={url} placeholder="YouTube URL" />
   <button onclick={download}>Download</button>
   <p>{message}</p>
@@ -72,7 +74,9 @@
 </form>
 
   <p>{songname}</p>
-  <audio autoplay onended={(playing += 1)} controls src={audioSrcs[dir[playing]]}></audio>
+  <audio bind:volume={volume} autoplay onended={(playing += 1)} controls src={audioSrcs[dir[playing]]}></audio>
+
+  <input type="range" bind:value={volume} min="0" max="1" step="0.05">
 
   <button onclick={() => { playing = Math.max(0, playing - 1); }}> back </button>
   <button onclick={() => { playing = Math.min(dir.length - 1, playing + 1); }}> forward </button>
