@@ -45,7 +45,7 @@
   });
 
   async function rename(file, new_file) {
-    await invoke("rename_file", { file: file, new_file: new_file });
+    await invoke("rename_file", { file: file, newFile: new_file });
 
     console.log(file);
     console.log(new_file);
@@ -67,8 +67,8 @@
   <button onclick={download}>Download</button>
   <p>{message}</p>
 
-  <form onsubmit={dir[playing]} onchange={rename(dir[playing],event.target.value)}>
-  <input type="text" value={dir[playing]}>
+  <form onsubmit={(event) => { event.preventDefault(); rename(dir[playing], event.target.elements.filename.value); }}>
+  <input type="text" value={songname} name="filename">
 </form>
 
   <p>{songname}</p>
