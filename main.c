@@ -18,7 +18,7 @@ float dft(float* windowed, int k) {
     float sum_real = 0.0f;
     float sum_imag = 0.0f;
     for (int n = 0; n < TRANSFORM_SIZE; n++) {
-        float theta = (2.0f * M_PI * k * n) / TRANSFORM_SIZE;
+        float theta = (2.0f * M_PI * (k+5) * n) / TRANSFORM_SIZE;
         sum_real += windowed[n] * cosf(theta);
         sum_imag += windowed[n] * sinf(theta);
     }
@@ -44,7 +44,7 @@ void draw_dft(SDL_Renderer* renderer) {
             windowed[n] = sample_buffer[(buffer_index + n) % TRANSFORM_SIZE] * window;
         }
 
-    int bar_width = 4;
+    int bar_width = 6;
     int gap = 0;
 
     for (int b = 0; b < NUM_BARS; b++) {
@@ -82,7 +82,7 @@ void draw_dft(SDL_Renderer* renderer) {
             h
         };
 
-        SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); 
+        SDL_SetRenderDrawColor(renderer, 0, b*1.8, 225, 255/b); 
         SDL_RenderFillRect(renderer, &bar);
     }
 }
