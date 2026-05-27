@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <unistd.h>
+#include <complex.h>
 
 #define TRANSFORM_SIZE 4096
 #define NUM_BARS 416
@@ -20,6 +21,41 @@ float elapsed = 0.0f;
 
 void increment_time() {
     elapsed = SDL_GetTicks64() / 1000.0f;
+}
+
+void bit_reverse(float complex* X, int N) {
+    int target = 0;
+    for (int position = 0; position < N; position++) {
+        if (target > position) {
+            float complex temp = X[target];
+            X[target] = X[position];
+            X[position] = temp;
+        }
+        int mask = N >> 1;
+        while (mask > 0 && (target & mask)) {
+            target &= ~mask;
+            mask >>= 1;
+        }
+        target |= mask;
+    }
+}
+
+void fft(float complex* X, int N) {
+    bit_reverse(X, N);
+    for (int len=2; len <= N; len <<= 1) {
+        float angle = -2.0f * M_PI / len;
+        float complex wlen = cosf(angle) + sinf(angle) * I;
+        for (int i=0; i < N; i += len) {
+            float complex w = 1.0f + 0.0f * I;
+            for (int j=0; j < len/2; j++) {
+                float complex u = X[i+j];
+                float complex v = X[i+j+len/2] * w;
+                X[i+j] = u + v;
+                X[i+j+len/2] = u - v;
+                w *= wlen;
+            }
+        }
+    }
 }
 
 float dft(float* windowed, int k) {
@@ -47,11 +83,14 @@ void capture_audio(int chan, void *stream, int len, void *udata) {
 
 void draw_dft(SDL_Renderer* renderer) {
     
-    float windowed[TRANSFORM_SIZE];
-        for (int n = 0; n < TRANSFORM_SIZE; n++) {
-            float window = 0.5f * (1.0f - cosf(2.0f * M_PI * n / (TRANSFORM_SIZE - 1)));
-            windowed[n] = sample_buffer[(buffer_index + n) % TRANSFORM_SIZE] * window;
-        }
+    float complex fft_buffer[TRANSFORM_SIZE];
+    for (int n = 0; n < TRANSFORM_SIZE; n++) {
+        int target_index = (buffer_index + n) % TRANSFORM_SIZE;
+        float window = 0.5f * (1.0f - cosf(2.0f * M_PI * n / (TRANSFORM_SIZE - 1)));
+        fft_buffer[n] = sample_buffer[target_index] * window + 0.0f * I;
+    }
+
+    fft(fft_buffer, TRANSFORM_SIZE);
 
     int bar_width = 2;
     int gap = 0;
@@ -66,8 +105,8 @@ void draw_dft(SDL_Renderer* renderer) {
         int k1 = k0 + 1;
         float fraction = k_exact - k0;
 
-        float mag0 = dft(windowed, k0);
-        float mag1 = dft(windowed, k1);
+        float mag0 = cabsf(fft_buffer[k0 + 5]);
+        float mag1 = cabsf(fft_buffer[k1 + 5]);
         float magnitude = mag0 + fraction * (mag1 - mag0);
 
         float eq_boost = log10f(k_exact * 10.0f); 
@@ -126,7 +165,7 @@ int main(int argc, char* argv[]) {
     Mix_PlayMusic(music, -1);
 
     SDL_Window* window = SDL_CreateWindow("pulze", 100, 100, 800, 600, SDL_WINDOW_SHOWN);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     bool running = true;
     SDL_Event event;
