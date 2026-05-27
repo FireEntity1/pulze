@@ -3,15 +3,24 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
+#include <unistd.h>
 
 #define TRANSFORM_SIZE 4096
-#define NUM_BARS 160 
+#define NUM_BARS 416
 
 float sample_buffer[TRANSFORM_SIZE];
 int buffer_index = 0;
 
 float smoothed_heights[NUM_BARS] = {0}; 
 const int SAMPLE_RATE = 44100;
+
+const int SMOOTHEN = 2;
+
+float elapsed = 0.0f;
+
+void increment_time() {
+    elapsed = SDL_GetTicks64() / 1000.0f;
+}
 
 float dft(float* windowed, int k) {
     if (k < 0 || k >= TRANSFORM_SIZE / 2) return 0.0f;
@@ -44,7 +53,7 @@ void draw_dft(SDL_Renderer* renderer) {
             windowed[n] = sample_buffer[(buffer_index + n) % TRANSFORM_SIZE] * window;
         }
 
-    int bar_width = 6;
+    int bar_width = 2;
     int gap = 0;
 
     for (int b = 0; b < NUM_BARS; b++) {
@@ -62,7 +71,7 @@ void draw_dft(SDL_Renderer* renderer) {
         float magnitude = mag0 + fraction * (mag1 - mag0);
 
         float eq_boost = log10f(k_exact * 10.0f); 
-        float target_h = sqrtf(magnitude) * 22.5f * eq_boost;
+        float target_h = sqrtf(magnitude) * 12.5f * eq_boost;
         
         if (target_h > smoothed_heights[b]) {
             smoothed_heights[b] += (target_h - smoothed_heights[b]) * 0.5f;
@@ -70,35 +79,53 @@ void draw_dft(SDL_Renderer* renderer) {
             smoothed_heights[b] -= (smoothed_heights[b] - target_h) * 0.4f;
         }
 
-        int h = (int)smoothed_heights[b];
+        int h = 0;
+        for (int i = 1; i<SMOOTHEN;i++) {
+            h += smoothed_heights[b];
+        }
+        h /= SMOOTHEN;
         if (h > 600) h = 600;
         
         int x = b * (bar_width + gap);
 
         SDL_Rect bar = {
             x,
-            600 - h,
+            300 - h,
             bar_width,
             h
         };
+        SDL_Rect bar2 = {
+            x,
+            300,
+            bar_width,
+            h
+        };
+        float scroll_speed = 120.0f;
+        float i = (b + elapsed * scroll_speed) * 0.01f;
 
-        SDL_SetRenderDrawColor(renderer, 0, b*1.8, 225, 255/b); 
+        float wave = sinf(0.4f*i) * 0.5f + 0.5f;
+
+        Uint8 r = (Uint8)(120.0f + wave * 135.0f);
+        Uint8 g = (Uint8)(10.0f  + wave * 25.0f);
+        Uint8 bl = (Uint8)(180.0f + (1.0f - wave) * 75.0f);
+
+        SDL_SetRenderDrawColor(renderer, r, g, bl, 255);
         SDL_RenderFillRect(renderer, &bar);
+        SDL_RenderFillRect(renderer, &bar2);
     }
 }
 
 int main(int argc, char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) return 1;
-
     if (Mix_OpenAudio(SAMPLE_RATE, MIX_DEFAULT_FORMAT, 2, 2048) < 0) return 1;
     
     Mix_RegisterEffect(MIX_CHANNEL_POST, capture_audio, NULL, NULL);
 
-    Mix_Music* music = Mix_LoadMUS("assets/music.mp3");
+    Mix_Music* music = Mix_LoadMUS("assets/ghoul.mp3");
     if (!music) return 1;
     Mix_PlayMusic(music, -1);
 
-    SDL_Window* window = SDL_CreateWindow("DFT Visualizer", 100, 100, 800, 600, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("pulze", 100, 100, 800, 600, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     bool running = true;
@@ -108,13 +135,14 @@ int main(int argc, char* argv[]) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
         }
-
+        
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-
+        
         draw_dft(renderer);
-
+        
         SDL_RenderPresent(renderer);
+        elapsed = SDL_GetTicks64() / 1000.0f;
     }
 
     Mix_FreeMusic(music);
