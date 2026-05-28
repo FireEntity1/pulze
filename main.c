@@ -97,7 +97,7 @@ void draw_dft(SDL_Renderer* renderer) {
 
     for (int b = 0; b < NUM_BARS; b++) {
         float t = (float)b / (NUM_BARS - 1);
-        float log_min = log10f(1.0f);
+        float log_min = log10f(1.5f);
         float log_max = log10f((float)(TRANSFORM_SIZE / 2 - 1));
         
         float k_exact = powf(10.0f, log_min + t * (log_max - log_min));
@@ -142,7 +142,7 @@ void draw_dft(SDL_Renderer* renderer) {
         float scroll_speed = 120.0f;
         float i = (b + elapsed * scroll_speed) * 0.01f;
 
-        float wave = sinf(0.4f*i) * 0.5f + 0.5f;
+        float wave = sinf(0.6f*i) * 0.5f + 0.5f;
 
         Uint8 r = (Uint8)(120.0f + wave * 135.0f);
         Uint8 g = (Uint8)(10.0f  + wave * 25.0f);
@@ -163,6 +163,7 @@ int main(int argc, char* argv[]) {
     Mix_Music* music = Mix_LoadMUS("assets/ghoul.mp3");
     if (!music) return 1;
     Mix_PlayMusic(music, -1);
+    Mix_SetMusicPosition(210.0);
 
     SDL_Window* window = SDL_CreateWindow("pulze", 100, 100, 800, 600, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
