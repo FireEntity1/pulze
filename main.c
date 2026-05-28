@@ -19,6 +19,8 @@ const int SMOOTHEN = 2;
 
 float elapsed = 0.0f;
 
+float bass = 0.0f;
+
 void increment_time() {
     elapsed = SDL_GetTicks64() / 1000.0f;
 }
@@ -164,10 +166,10 @@ int main(int argc, char* argv[]) {
     if (!music) return 1;
     Mix_PlayMusic(music, -1);
     Mix_SetMusicPosition(210.0);
-
     SDL_Window* window = SDL_CreateWindow("pulze", 100, 100, 800, 600, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    
     bool running = true;
     SDL_Event event;
 
@@ -178,7 +180,14 @@ int main(int argc, char* argv[]) {
         
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-        
+        float new_bass = 0.0f;
+        for (int i = 0; i < 20; i++) {
+            new_bass += smoothed_heights[i+60];
+        }
+        new_bass /= 20.0f;
+        bass = bass * 0.9f + new_bass * 0.1f;
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, bass/20.0f);
+        SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, 800, 800});
         draw_dft(renderer);
         
         SDL_RenderPresent(renderer);
