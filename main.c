@@ -20,6 +20,7 @@ const int SMOOTHEN = 2;
 float elapsed = 0.0f;
 
 float bass = 0.0f;
+float bass_smoothed = 150.0f;
 
 void increment_time() {
     elapsed = SDL_GetTicks64() / 1000.0f;
@@ -83,7 +84,13 @@ void capture_audio(int chan, void *stream, int len, void *udata) {
     }
 }
 
-void draw_dft(SDL_Renderer* renderer) {
+float clamp(float x, float min, float max) {
+    if (x < min) return min;
+    if (x > max) return max;
+    return x;
+}
+
+void draw_bars(SDL_Renderer* renderer) {
     
     float complex fft_buffer[TRANSFORM_SIZE];
     for (int n = 0; n < TRANSFORM_SIZE; n++) {
@@ -142,13 +149,16 @@ void draw_dft(SDL_Renderer* renderer) {
             h
         };
         float scroll_speed = 120.0f;
-        float i = (b + elapsed * scroll_speed) * 0.01f;
+        // float i = elapsed * 1.8f + b * 0.045f;
 
-        float wave = sinf(0.6f*i) * 0.5f + 0.5f;
+        // float r_wave = sinf(i) * 0.5f + 0.5f;
+        // float b_wave = sinf(i + 2.1f) * 0.5f + 0.5f;
 
-        Uint8 r = (Uint8)(120.0f + wave * 135.0f);
-        Uint8 g = (Uint8)(10.0f  + wave * 25.0f);
-        Uint8 bl = (Uint8)(180.0f + (1.0f - wave) * 75.0f);
+        float i = elapsed * 1.2f + b * 0.02f;
+
+        Uint8 r = (Uint8)clamp((bass_smoothed-100)*3.0f, 100, 200);
+        Uint8 g = 50;
+        Uint8 bl = (Uint8)clamp((-bass_smoothed+200)*2.0f, 0, 255);
 
         SDL_SetRenderDrawColor(renderer, r, g, bl, 255);
         SDL_RenderFillRect(renderer, &bar);
@@ -156,39 +166,56 @@ void draw_dft(SDL_Renderer* renderer) {
     }
 }
 
+float lerp(float a, float b, float t, bool down_slow) {
+    if (down_slow && b < a) {
+        t *= 0.2f;
+    }
+    return a + t * (b - a);
+}
+
 int main(int argc, char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) return 1;
     if (Mix_OpenAudio(SAMPLE_RATE, MIX_DEFAULT_FORMAT, 2, 2048) < 0) return 1;
     
+    
     Mix_RegisterEffect(MIX_CHANNEL_POST, capture_audio, NULL, NULL);
-
+    
     Mix_Music* music = Mix_LoadMUS("assets/ghoul.mp3");
     if (!music) return 1;
     Mix_PlayMusic(music, -1);
-    Mix_SetMusicPosition(210.0);
+    Mix_SetMusicPosition(10.0);
     SDL_Window* window = SDL_CreateWindow("pulze", 100, 100, 800, 600, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     
     bool running = true;
     SDL_Event event;
-
+    
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
         }
+        float loudness = 0.0f;
+    
+        for (int i = 0; i < 50; i++) {
+            loudness += smoothed_heights[(i+30)*20];
+        }
+        loudness /= 50.0f;
+        // printf("Initial loudness: %f\n", loudness);
         
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         float new_bass = 0.0f;
-        for (int i = 0; i < 20; i++) {
-            new_bass += smoothed_heights[i+60];
+        for (int i = 0; i < 35; i++) {
+            new_bass += smoothed_heights[i+25];
         }
-        new_bass /= 20.0f;
+        new_bass /= 35.0f;
         bass = bass * 0.9f + new_bass * 0.1f;
+        bass_smoothed = lerp(bass_smoothed, bass, 0.015f, true);
+        printf("Bass: %f\n", bass_smoothed);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, bass/20.0f);
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, 800, 800});
-        draw_dft(renderer);
+        draw_bars(renderer);
         
         SDL_RenderPresent(renderer);
         elapsed = SDL_GetTicks64() / 1000.0f;
