@@ -2,8 +2,10 @@
 #include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <complex.h>
 
 #define TRANSFORM_SIZE 4096
@@ -14,6 +16,12 @@ int buffer_index = 0;
 
 float smoothed_heights[NUM_BARS] = {0}; 
 const int SAMPLE_RATE = 44100;
+
+char songs[128][512];
+int song_count = 0;
+struct dirent *entry;
+
+bool menu = true;
 
 const int SMOOTHEN = 2;
 
@@ -159,7 +167,7 @@ void draw_bars(SDL_Renderer* renderer) {
         Uint8 r = (Uint8)clamp((bass_smoothed-100)*3.0f, 100, 200);
         Uint8 g = 50;
         Uint8 bl = (Uint8)clamp((-bass_smoothed+200)*2.0f, 0, 255);
-
+        
         SDL_SetRenderDrawColor(renderer, r, g, bl, 255);
         SDL_RenderFillRect(renderer, &bar);
         SDL_RenderFillRect(renderer, &bar2);
@@ -173,17 +181,63 @@ float lerp(float a, float b, float t, bool down_slow) {
     return a + t * (b - a);
 }
 
+Mix_Music* load_music(char* name) {
+    char path[256];
+    snprintf(path, sizeof(path), "./music/%s", name);
+    Mix_Music* music = Mix_LoadMUS(path);
+    if (!music) {
+        printf("Failed to load music: %s\n", Mix_GetError());
+        return NULL;
+    }
+    Mix_PlayMusic(music, -1);
+    Mix_SetMusicPosition(0.0);
+    return music;
+}
+
 int main(int argc, char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) return 1;
     if (Mix_OpenAudio(SAMPLE_RATE, MIX_DEFAULT_FORMAT, 2, 2048) < 0) return 1;
     
+    DIR *dir = opendir("./music/");
+    Mix_Music* music;
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_REG && strstr(entry->d_name, ".mp3")) {
+            strncpy(songs[song_count], entry->d_name, sizeof(songs[song_count]) - 1);
+            songs[song_count][sizeof(songs[song_count]) - 1] = '\0';
+            song_count++;
+            if (song_count >= 128) break;
+        }
+    }
+    closedir(dir);
+    printf("Found %d songs:\n", song_count);
+    for (int i = 0; i < song_count; i++) {
+        printf("%d: %s\n", i + 1, songs[i]);
+    }
     
     Mix_RegisterEffect(MIX_CHANNEL_POST, capture_audio, NULL, NULL);
     
-    Mix_Music* music = Mix_LoadMUS("assets/ghoul.mp3");
-    if (!music) return 1;
-    Mix_PlayMusic(music, -1);
-    Mix_SetMusicPosition(10.0);
+    char input[16];
+    int choice;
+    while (menu) {
+        printf("Enter song number to play: ");
+        if (!fgets(input, sizeof(input), stdin)) {
+            printf("Input invalid.\n");
+            continue;
+        }
+        choice = atoi(input);
+        if (choice < 1 || choice > song_count) {
+            printf("Song does not exist.\n");
+            continue;
+        } else {
+            if (choice >= 1 && choice <= song_count) {
+                menu = false;
+                break;
+            }
+        }
+    }
+    music = load_music(songs[choice - 1]);
+
     SDL_Window* window = SDL_CreateWindow("pulze", 100, 100, 800, 600, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -194,6 +248,20 @@ int main(int argc, char* argv[]) {
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
+            if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                    case SDLK_LEFT:
+                    if (menu) {break;}
+                        Mix_SetMusicPosition(Mix_GetMusicPosition(music) - 10.0);
+                        elapsed -= 10.0f;
+                        break;
+                    case SDLK_RIGHT:
+                    if (menu) {break;}
+                        Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 10.0);
+                        elapsed += 10.0f;
+                        break;
+                }
+            }
         }
         float loudness = 0.0f;
     
@@ -201,7 +269,6 @@ int main(int argc, char* argv[]) {
             loudness += smoothed_heights[(i+30)*20];
         }
         loudness /= 50.0f;
-        // printf("Initial loudness: %f\n", loudness);
         
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
@@ -212,7 +279,6 @@ int main(int argc, char* argv[]) {
         new_bass /= 35.0f;
         bass = bass * 0.9f + new_bass * 0.1f;
         bass_smoothed = lerp(bass_smoothed, bass, 0.015f, true);
-        printf("Bass: %f\n", bass_smoothed);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, bass/20.0f);
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, 800, 800});
         draw_bars(renderer);
