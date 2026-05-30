@@ -11,11 +11,13 @@
 #define TRANSFORM_SIZE 4096
 #define NUM_BARS 416
 
+volatile bool song_finished = false;
+
 float sample_buffer[TRANSFORM_SIZE];
 int buffer_index = 0;
 
 float smoothed_heights[NUM_BARS] = {0}; 
-const int SAMPLE_RATE = 44100*1.5;
+const int SAMPLE_RATE = 44100;
 
 char songs[128][512];
 int song_count = 0;
@@ -32,6 +34,10 @@ float bass_smoothed = 150.0f;
 
 void increment_time() {
     elapsed = SDL_GetTicks64() / 1000.0f;
+}
+
+void music_finished_callback() {
+    song_finished = true;
 }
 
 void bit_reverse(float complex* X, int N) {
@@ -98,6 +104,13 @@ float clamp(float x, float min, float max) {
     return x;
 }
 
+float bar_to_bin(int b) {
+    float t = (float)b / (NUM_BARS - 1);
+    float log_min = log10f(3.0f);
+    float log_max = log10f((float)(TRANSFORM_SIZE / 3.5 - 1));
+    return powf(10.0f, log_min + t * (log_max - log_min));
+}
+
 void draw_bars(SDL_Renderer* renderer) {
     
     float complex fft_buffer[TRANSFORM_SIZE];
@@ -113,20 +126,44 @@ void draw_bars(SDL_Renderer* renderer) {
     int gap = 0;
 
     for (int b = 0; b < NUM_BARS; b++) {
-        float t = (float)b / (NUM_BARS - 1);
-        float log_min = log10f(3.0f);
-        float log_max = log10f((float)(TRANSFORM_SIZE / 3.5 - 1));
+        // float t = (float)b / (NUM_BARS - 1);
+        // float log_min = log10f(3.0f);
+        // float log_max = log10f((float)(TRANSFORM_SIZE / 3.5 - 1));
         
-        float k_exact = powf(10.0f, log_min + t * (log_max - log_min));
-        int k0 = (int)floorf(k_exact);
-        int k1 = k0 + 1;
-        float fraction = k_exact - k0;
+        // float k_exact = powf(10.0f, log_min + t * (log_max - log_min));
 
-        float mag0 = cabsf(fft_buffer[k0 + 5]);
-        float mag1 = cabsf(fft_buffer[k1 + 5]);
-        float magnitude = mag0 + fraction * (mag1 - mag0);
+        // int k0 = (int)floorf(k_exact);
+        // int k1 = k0 + 1;
+        // float fraction = k_exact - k0;
 
-        float eq_boost = log10f(k_exact * 10.0f); 
+        // float mag0 = cabsf(fft_buffer[k0 + 5]);
+        // float mag1 = cabsf(fft_buffer[k1 + 5]);
+        // float magnitude = mag0 + fraction * (mag1 - mag0);
+        float k_low = bar_to_bin(b);
+        float k_high = bar_to_bin(b + 1);
+
+        float magnitude = 0.0f;
+        if (k_high > k_low) {
+            int k0 = (int)floorf(k_low);
+            float frac = k_low - k0;
+            float m0 = cabsf(fft_buffer[k0 + 5]);
+            float m1 = cabsf(fft_buffer[k0 + 6]);
+            magnitude += m0 + frac * (m1 - m0);
+        } else {
+            int ka = (int)floorf(k_low);
+            int kb = (int)floorf(k_high);
+            if (kb > TRANSFORM_SIZE / 2) kb = TRANSFORM_SIZE / 2;
+            for (int k = ka; k <= kb; k++) {
+                float m = cabsf(fft_buffer[k + 5]);
+                if (m > magnitude) {
+                    magnitude = m;
+                }
+            }
+        }
+        
+        float k_mid = 0.5f * (k_low + k_high);
+
+        float eq_boost = log10f(k_mid * 10.0f); 
         float target_h = sqrtf(magnitude) * 12.5f * eq_boost;
         
         if (target_h > smoothed_heights[b]) {
@@ -139,11 +176,10 @@ void draw_bars(SDL_Renderer* renderer) {
         for (int i = 1; i<SMOOTHEN;i++) {
             h += smoothed_heights[b];
         }
+        if (h < 15) h = 0;
         h /= SMOOTHEN;
         if (h > 600) h = 600;
-        
         int x = b * (bar_width + gap);
-
         SDL_Rect bar = {
             x,
             300 - h,
@@ -197,7 +233,8 @@ Mix_Music* load_music(char* name) {
 int main(int argc, char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) return 1;
     if (Mix_OpenAudio(SAMPLE_RATE, MIX_DEFAULT_FORMAT, 2, 2048) < 0) return 1;
-    
+    Mix_HookMusicFinished(music_finished_callback);
+
     DIR *dir = opendir("./music/");
     Mix_Music* music;
 
@@ -273,10 +310,10 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         float new_bass = 0.0f;
-        for (int i = 0; i < 35; i++) {
-            new_bass += smoothed_heights[i+25];
+        for (int i = 18; i < 48; i++) {
+            new_bass += smoothed_heights[i];
         }
-        new_bass /= 35.0f;
+        new_bass /= 30.0f;
         bass = bass * 0.9f + new_bass * 0.1f;
         bass_smoothed = lerp(bass_smoothed, bass, 0.015f, true);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, bass/20.0f);
@@ -286,6 +323,11 @@ int main(int argc, char* argv[]) {
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, Mix_GetMusicPosition(music) / Mix_MusicDuration(music) * 800, 5});
 
         SDL_RenderPresent(renderer);
+        if (song_finished == true) {
+            song_finished = false;
+            choice = (choice + 1) % song_count;
+            load_music(songs[choice]);
+        }
         elapsed = SDL_GetTicks64() / 1000.0f;
     }
 
