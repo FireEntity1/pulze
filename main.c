@@ -287,14 +287,36 @@ int main(int argc, char* argv[]) {
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
                     case SDLK_LEFT:
-                    if (menu) {break;}
+                        if (menu) {break;}
                         Mix_SetMusicPosition(Mix_GetMusicPosition(music) - 10.0);
                         elapsed -= 10.0f;
                         break;
                     case SDLK_RIGHT:
-                    if (menu) {break;}
+                        if (menu) {break;}
                         Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 10.0);
                         elapsed += 10.0f;
+                        break;
+                    case SDLK_MINUS:
+                        if (menu) {break;}
+                        Mix_VolumeMusic(Mix_VolumeMusic(-1) - 8);
+                        break;
+                    case SDLK_EQUALS:
+                        if (menu) {break;}
+                        Mix_VolumeMusic(Mix_VolumeMusic(-1) + 8);
+                        break;
+                    case SDLK_UP:
+                        if (menu) {break;}
+                        menu = false;
+                        choice = (choice - 1 + song_count) % song_count;
+                        music = load_music(songs[choice]);
+                        Mix_PlayMusic(music, -1);
+                        break;
+                    case SDLK_DOWN:
+                        if (menu) {break;}
+                        menu = false;
+                        choice = (choice - 1 + song_count) % song_count;
+                        music = load_music(songs[choice]);
+                        Mix_PlayMusic(music, -1);
                         break;
                 }
             }
@@ -325,7 +347,7 @@ int main(int argc, char* argv[]) {
         if (song_finished == true) {
             song_finished = false;
             choice = (choice + 1) % song_count;
-            load_music(songs[choice]);
+            music = load_music(songs[choice]);
         }
         elapsed = SDL_GetTicks64() / 1000.0f;
     }
