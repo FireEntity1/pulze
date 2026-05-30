@@ -15,7 +15,7 @@ float sample_buffer[TRANSFORM_SIZE];
 int buffer_index = 0;
 
 float smoothed_heights[NUM_BARS] = {0}; 
-const int SAMPLE_RATE = 44100;
+const int SAMPLE_RATE = 44100*1.5;
 
 char songs[128][512];
 int song_count = 0;
@@ -114,8 +114,8 @@ void draw_bars(SDL_Renderer* renderer) {
 
     for (int b = 0; b < NUM_BARS; b++) {
         float t = (float)b / (NUM_BARS - 1);
-        float log_min = log10f(1.5f);
-        float log_max = log10f((float)(TRANSFORM_SIZE / 2 - 1));
+        float log_min = log10f(3.0f);
+        float log_max = log10f((float)(TRANSFORM_SIZE / 3.5 - 1));
         
         float k_exact = powf(10.0f, log_min + t * (log_max - log_min));
         int k0 = (int)floorf(k_exact);
