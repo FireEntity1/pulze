@@ -199,9 +199,9 @@ void draw_bars(SDL_Renderer* renderer) {
 
         float i = elapsed * 1.2f + b * 0.02f;
 
-        Uint8 r = (Uint8)clamp((bass_smoothed-100)*3.0f, 100, 200);
+        Uint8 r = (Uint8)clamp((bass_smoothed-100)*2.5f, 100, 200);
         Uint8 g = 50;
-        Uint8 bl = (Uint8)clamp((-bass_smoothed+200)*2.0f, 0, 255);
+        Uint8 bl = (Uint8)clamp((-bass_smoothed+250)*2.0f, 0, 255);
         
         SDL_SetRenderDrawColor(renderer, r, g, bl, 255);
         SDL_RenderFillRect(renderer, &bar);
@@ -273,7 +273,7 @@ int main(int argc, char* argv[]) {
         }
     }
     music = load_music(songs[choice - 1]);
-
+    
     SDL_Window* window = SDL_CreateWindow("pulze", 100, 100, 800, 600, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -281,40 +281,44 @@ int main(int argc, char* argv[]) {
     bool running = true;
     SDL_Event event;
     
+    SDL_Texture* scene = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 800, 600);
+    SDL_SetTextureBlendMode(scene, SDL_BLENDMODE_ADD);
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
                     case SDLK_LEFT:
-                        if (menu) {break;}
-                        Mix_SetMusicPosition(Mix_GetMusicPosition(music) - 10.0);
-                        elapsed -= 10.0f;
-                        break;
+                    if (menu) {break;}
+                    Mix_SetMusicPosition(Mix_GetMusicPosition(music) - 10.0);
+                    elapsed -= 10.0f;
+                    break;
                     case SDLK_RIGHT:
-                        if (menu) {break;}
-                        Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 10.0);
-                        elapsed += 10.0f;
-                        break;
+                    if (menu) {break;}
+                    Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 10.0);
+                    elapsed += 10.0f;
+                    break;
                     case SDLK_UP:
-                        if (menu) {break;}
-                        menu = false;
-                        choice = (choice - 1 + song_count) % song_count;
-                        music = load_music(songs[choice]);
-                        Mix_PlayMusic(music, -1);
-                        break;
+                    if (menu) {break;}
+                    menu = false;
+                    choice = (choice - 1 + song_count) % song_count;
+                    music = load_music(songs[choice]);
+                    Mix_PlayMusic(music, -1);
+                    break;
                     case SDLK_DOWN:
-                        if (menu) {break;}
-                        menu = false;
-                        choice = (choice - 1 + song_count) % song_count;
-                        music = load_music(songs[choice]);
-                        Mix_PlayMusic(music, -1);
-                        break;
+                    if (menu) {break;}
+                    menu = false;
+                    choice = (choice - 1 + song_count) % song_count;
+                    music = load_music(songs[choice]);
+                    Mix_PlayMusic(music, -1);
+                    break;
                 }
             }
         }
         float loudness = 0.0f;
-    
+        
+        SDL_SetRenderTarget(renderer, scene);
+
         for (int i = 0; i < 50; i++) {
             loudness += smoothed_heights[(i+30)*20];
         }
@@ -332,6 +336,30 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, bass/20.0f);
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, 800, 800});
         draw_bars(renderer);
+        SDL_SetRenderTarget(renderer, NULL);
+        
+        // SDL_SetTextureAlphaMod(scene, 230);
+        // SDL_RenderCopy(renderer, scene, NULL, &r);
+        
+        float offset = bass/50.0f - 2.0f;
+        if (offset > 5.0f) offset = 5.0f;
+        if (offset < 0.0f) offset = 0.0f;
+        
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_ADD);
+
+        SDL_SetTextureColorMod(scene, 255, 0, 0);
+        SDL_SetTextureAlphaMod(scene, 200);
+        SDL_RenderCopy(renderer, scene, NULL, &(SDL_Rect){-offset, -offset, 800, 600});
+
+        SDL_SetTextureColorMod(scene, 0, 255, 0);
+        SDL_SetTextureAlphaMod(scene, 200);
+        SDL_RenderCopy(renderer, scene, NULL, &(SDL_Rect){0, 0, 800, 600});
+
+        SDL_SetTextureColorMod(scene, 0, 0, 255);
+        SDL_SetTextureAlphaMod(scene, 200);
+        SDL_RenderCopy(renderer, scene, NULL, &(SDL_Rect){offset, offset, 800, 600});
+
+
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, 595, Mix_GetMusicPosition(music) / Mix_MusicDuration(music) * 800, 5});
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, Mix_GetMusicPosition(music) / Mix_MusicDuration(music) * 800, 5});
 
