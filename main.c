@@ -282,7 +282,9 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, bass/20.0f);
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, 800, 800});
         draw_bars(renderer);
-        
+        SDL_RenderFillRect(renderer, &(SDL_Rect){0, 595, Mix_GetMusicPosition(music) / Mix_MusicDuration(music) * 800, 5});
+        SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, Mix_GetMusicPosition(music) / Mix_MusicDuration(music) * 800, 5});
+
         SDL_RenderPresent(renderer);
         elapsed = SDL_GetTicks64() / 1000.0f;
     }
