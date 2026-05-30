@@ -296,14 +296,6 @@ int main(int argc, char* argv[]) {
                         Mix_SetMusicPosition(Mix_GetMusicPosition(music) + 10.0);
                         elapsed += 10.0f;
                         break;
-                    case SDLK_MINUS:
-                        if (menu) {break;}
-                        Mix_VolumeMusic(Mix_VolumeMusic(-1) - 8);
-                        break;
-                    case SDLK_EQUALS:
-                        if (menu) {break;}
-                        Mix_VolumeMusic(Mix_VolumeMusic(-1) + 8);
-                        break;
                     case SDLK_UP:
                         if (menu) {break;}
                         menu = false;
