@@ -163,7 +163,7 @@ void draw_bars(SDL_Renderer* renderer) {
         
         float k_mid = 0.5f * (k_low + k_high);
 
-        float eq_boost = log10f(k_mid * 10.0f); 
+        float eq_boost = log10f(k_mid * 20.0f); 
         float target_h = sqrtf(magnitude) * 12.5f * eq_boost;
         
         if (target_h > smoothed_heights[b]) {
@@ -176,7 +176,6 @@ void draw_bars(SDL_Renderer* renderer) {
         for (int i = 1; i<SMOOTHEN;i++) {
             h += smoothed_heights[b];
         }
-        if (h < 15) h = 0;
         h /= SMOOTHEN;
         if (h > 600) h = 600;
         int x = b * (bar_width + gap);
@@ -313,7 +312,7 @@ int main(int argc, char* argv[]) {
         for (int i = 18; i < 48; i++) {
             new_bass += smoothed_heights[i];
         }
-        new_bass /= 30.0f;
+        new_bass /= 35.0f;
         bass = bass * 0.9f + new_bass * 0.1f;
         bass_smoothed = lerp(bass_smoothed, bass, 0.015f, true);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, bass/20.0f);
